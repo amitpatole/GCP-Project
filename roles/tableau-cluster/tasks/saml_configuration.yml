@@ -54,7 +54,7 @@
   command: "{{ TSM_EXECUTABLE }}/tsm pending-changes apply --username {{ tableau_user }} --password {{ tableau_password }} --ignore-prompt"
 
 - name: TABLEAU SAML | Generate saml metatata file for IdP
-  command: "{{ TSM_EXECUTABLE }}/tsm authentication saml export-metadata -f /tmp/{{ inventory_hostname }}-{{ saml_metadata_file }}"
+  command: "{{ TSM_EXECUTABLE }}/tsm authentication saml export-metadata -f /tmp/{{ inventory_hostname }}-{{ saml_metadata_file_ext }}"
   become: yes
   become_user: "{{ tableau_user }}"
 
