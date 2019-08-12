@@ -1,2 +1,4 @@
 .vagrant/*
 inventory/vagrant_ansible_inventory
+.vs
+.vs/*
