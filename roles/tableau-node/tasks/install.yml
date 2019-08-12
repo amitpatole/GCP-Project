@@ -1,0 +1,46 @@
+---
+- name: TABLEAU INSTALL | Install on RedHat environment (This may take some time)
+  yum:
+    name: "{{ tableau_url_rpm }}"
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: TABLEAU INSTALL | Get Tableau TSM version
+  shell: "ls {{ tsm_packages }} | grep scripts"
+  register: tsm
+  changed_when: false
+
+- name: TABLEAU INSTALL | Fix systemd unit
+  lineinfile:
+    path: "{{ tsm_packages }}/{{ tsm.stdout }}/user-at.service"
+    line: Environment=XDG_RUNTIME_DIR=/run/user/%i
+    insertbefore: "^ExecStart="
+    state: present
+  when: tableau_fix_systemd_unit
+
+- name: Check bootstrap file is exist
+  stat:
+    path: "{{ playbook_dir }}/files/bootstrap.json"
+  register: boostrap_file
+  tags: ["bootstrap", "check-bootstrap", "cluster"]
+
+- name: copy-bootstrap bootstrap file to nodes
+  copy:
+    src: "{{ playbook_dir }}/files/bootstrap.json"
+    dest: /tmp/bootstrap.json
+    mode: 0777
+
+- name: Find script directory
+  shell: "ls {{ tsm_packages }}/ | grep script"
+  register: tsm
+  tags: ["install-additional", "find-script-dir"]
+
+
+- name: TABLEAU INSTALL | Initialize Tableau TSM
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/initialize-tsm -b /tmp/bootstrap.json -u {{ tableau_user }} -p {{ tableau_password }} --accepteula -f"
+  args:
+    chdir: "{{ tsm_packages }}/{{ tsm.stdout }}"
+    creates: "{{ tableau_data_dir }}"
+  become: yes
+  ignore_errors: True
+  tags: ["install-additional", "initialize-additional-tsm"]

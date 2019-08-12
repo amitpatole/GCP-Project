@@ -1,0 +1,38 @@
+---
+
+- name: TABLEAU INSTALL | Install on RedHat environment (This may take some time)
+  yum:
+    name: "{{ tableau_url_rpm }}"
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: TABLEAU INSTALL | Get Tableau TSM version
+  shell: "ls {{ tsm_packages }} | grep scripts"
+  register: tsm
+  changed_when: false
+
+- name: TABLEAU INSTALL | Fix systemd unit
+  lineinfile:
+    path: "{{ tsm_packages }}/{{ tsm.stdout }}/user-at.service"
+    line: Environment=XDG_RUNTIME_DIR=/run/user/%i
+    insertbefore: "^ExecStart="
+    state: present
+  when: tableau_fix_systemd_unit
+
+- name: TABLEAU INSTALL | Initialize Tableau TSM
+  command: ./initialize-tsm {{ tsm_execute_args }} -f
+  args:
+    chdir: "{{ tsm_packages }}/{{ tsm.stdout }}"
+    creates: "{{ tableau_data_dir }}"
+
+- name: TABLEAU SSL | Create directory
+  file:
+    state: directory
+    path: /var/opt/tableau/tableau_server/data/ssl
+    owner: root
+    group: root
+    mode: 0700
+
+- name: create self-signed SSL cert
+  command: "openssl req -new -nodes -x509 -subj '/C=US/ST=Georgia/L=Alpharetta/O=IT/CN={{ ansible_fqdn }}' -days 3650 -newkey rsa:2048 -keyout /var/opt/tableau/tableau_server/data/ssl/server.key -out /var/opt/tableau/tableau_server/data/ssl/server.crt -extensions v3_ca"
+  

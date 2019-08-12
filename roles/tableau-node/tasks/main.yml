@@ -1,0 +1,17 @@
+---
+
+- name: TABLEAU | Ensure if sudoers is configured correctly
+  lineinfile:
+    path: /etc/sudoers
+    state: present
+    line: "#includedir /etc/sudoers.d"
+
+
+- name: TABLEAU | Manage Tableau Server Admin account
+  import_tasks: user.yml
+  tags: tableau-user
+
+- name: TABLEAU | Install Tableau Server
+  import_tasks: install.yml
+  tags: tableau-install
+  

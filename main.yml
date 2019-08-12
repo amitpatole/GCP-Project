@@ -1,0 +1,29 @@
+---
+
+- name: Install tableau server
+  hosts: tableau_master_node
+  remote_user: osadmin
+  become_method: sudo
+  become: yes
+  roles:
+    - tableau-server
+  ignore_errors: yes
+
+- name: Install tableau cluster
+  hosts: tableau_nodes
+  remote_user: osadmin
+  become_method: sudo
+  become: yes
+  roles:
+    - tableau-node
+
+- name: Config Tableau Cluster
+  hosts: tableau_master_node
+  remote_user: osadmin
+  become: yes
+  become_method: sudo
+  become_user: tabadmin
+  roles:
+    - tableau-cluster 
+
+...

@@ -1,0 +1,7 @@
+---
+- name: Deploy a Coordination Service ensemble
+  import_tasks: deploy_coordination.yml
+- name: Add a process to the additional nodes
+  import_tasks: add_node_process.yml
+- name: Configure Saml and enable it
+  import_tasks: saml_configuration.yml

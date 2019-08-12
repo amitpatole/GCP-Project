@@ -1,0 +1,114 @@
+- name: Find customer directory
+  shell: "ls {{ tsm_packages }}/ | grep customer"
+  register: tsm
+  tags: ["install-additional", "find-customer-dir"]
+
+- name: TABLEAU STOP|Stop TSM Service
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm  stop"
+  async: 1800
+  poll: 10
+  become: yes
+  become_user: "{{ tableau_user }}"
+  register: tsm_stop
+  tags: [ "deploy_coordination", "tsm-stop" ]
+
+- debug:
+        var: tsm_stop.stdout
+
+
+- name: TABLEAU DEPLOY CLUSTER CONTROLLER | deploy Cluster Controller on {{ item }}
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm topology set-process -n {{ item }} -pr clustercontroller -c 1 -u {{ tableau_user }} --password {{ tableau_password }}"
+  with_items:
+          - "node2"
+          - "node3"
+  ignore_errors: true
+  register: tsm_coordination
+  tags: [ "deploy_coordination", "deploy-core" ]
+- debug:
+        var: tsm_coordination.stdout
+
+- name: TABLEAU CONFIG | Apply pending changes
+  command: "{{ TSM_EXECUTABLE }}/tsm pending-changes apply --username {{ tableau_user }} --password {{ tableau_password }} --ignore-warnings"
+
+- name: TABLEAU STOP|Stop TSM Service
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm  stop"
+  async: 1800
+  poll: 10
+  become: yes
+  become_user: "{{ tableau_user }}"
+  register: tsm_stop
+  tags: [ "deploy_coordination", "tsm-stop" ]
+
+- name: TABLEAU DEPLOY COORDINATION| deploy the Coordination Service to all three nodes of a three-node cluster
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm topology deploy-coordination-service -n node1,node2,node3 -u {{ tableau_user }} --password {{ tableau_password }}"
+  register: tsm_coordination
+  tags: [ "deploy_coordination", "deploy-core" ]
+- debug:
+        var: tsm_coordination.stdout
+
+- pause:
+    minutes: 10
+
+- name: TABLEAU DEPLOY COORDINATION| Remove the old ensemble
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm topology cleanup-coordination-service -u {{ tableau_user }} --password {{ tableau_password }}"
+  register: tsm_cleanup_coordinaition
+  tags: [ "cleanup_coordination", "deploy-core" ]
+- debug:
+        var: tsm_coordination.stdout
+
+- name: Add a process to the additional nodes
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm topology set-process -n node2 -pr {{ item }} --username {{ tableau_user }} --password {{ tableau_password }}"
+  with_items:
+          - "gateway -c 1"
+          - "cacheserver -c 2"
+          - "searchserver -c 1"
+          - "filestore -c 1"
+          - "pgsql -c 1"
+  ignore_errors: true
+  tags: ["add_cluster_process"]
+
+- name: TABLEAU CONFIG | Apply pending changes
+  command: "{{ TSM_EXECUTABLE }}/tsm pending-changes apply --username {{ tableau_user }} --password {{ tableau_password }} --ignore-warnings"
+
+- name: TABLEAU STOP|Stop TSM Service
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm  stop"
+  async: 1800
+  poll: 10
+  become: yes
+  become_user: "{{ tableau_user }}"
+  register: tsm_stop
+  tags: [ "deploy_coordination", "tsm-stop" ]
+
+- name: Add a process to the additional nodes
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm  topology set-process -n node3 -pr {{ item }} --username {{ tableau_user }} --password {{ tableau_password }}"
+  #  with_sequence: start=1 end={{ groups['tableau-cluster'] | length+1 }}
+  with_items:
+          - "gateway -c 1"
+          - "cacheserver -c 2"
+          - "searchserver -c 1"
+          - "filestore -c 1"
+  ignore_errors: true
+  tags: ["add_cluster_process"]
+
+- name: TABLEAU STATUS| Check status of Tableau Server
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm status "
+  when: '"master" in inventory_hostname'
+  register: tsm_status
+
+- debug:
+        var: tsm_status.stdout
+
+- name: TABLEAU CONFIG | Apply pending changes
+  command: "{{ TSM_EXECUTABLE }}/tsm pending-changes apply --username {{ tableau_user }} --password {{ tableau_password }} --ignore-warnings"
+         
+  
+- name: TABLEAU START| Start TSM Service (This will take time )
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm  start"
+  async: 3600
+  poll: 10
+  become: yes
+  become_user: "{{ tableau_user }}"
+  register: tsm_start
+  tags: [ "add_cluster_process", "tsm-start" ]
+
+

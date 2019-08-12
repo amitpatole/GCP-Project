@@ -1,0 +1,35 @@
+---
+- name:  TABLEAU SSL | Get Tableau Server Manager executable
+  shell: "ls {{ tsm_packages }} | grep customer"
+  register: tsm
+  changed_when: false
+
+- name:  TABLEAU SSL | Set facts for Tableau Server Manager executable
+  set_fact:
+    TSM_EXECUTABLE: "{{ tsm_packages }}/{{ item.stdout }}"
+  with_items:
+    - "{{ tsm }}"
+
+- name: TABLEAU SSL | Create directory
+  file:
+    state: directory
+    path: " {{ tableau_ssl_dir }}"
+    owner: "{{ tableau_user }}"  
+    group: "{{ tableau_user }}"  
+    mode: 0755
+
+- name: TABLEAU SSL |  Copy SSL certificates to ssl directory
+  copy:
+    src: "{{ playbook_dir }}/files/saml/{{ item }}"
+    dest: "{{ tableau_ssl_dir }}"
+  become: yes
+  become_user: "{{ tableau_user }}"
+  with_items:
+        - "{{ key_file }}"
+		- "{{ cert_file }}"
+
+- name:  TABLEAU SSL | Configure SSL on Tableau Server
+  command: "{{ TSM_EXECUTABLE }}/tsm security external-ssl enable --cert-file {{ tableau_ssl_dir }}/{{ cert_file }} --key-file {{ tableau_ssl_dir }}/{{ key_file }}"
+
+- name: TABLEAU SSL | Apply pending changes
+  command: "{{ TSM_EXECUTABLE }}/tsm pending-changes apply --username {{ tableau_user }} --password {{ tableau_password }} --ignore-prompt"

@@ -1,0 +1,7 @@
+---
+
+- name: TABLEAU POSTGRES | Install Postgresql Tableau ODBC
+  yum:
+    name: "{{ tableau_postgresql_odbc_rpm }}"
+    state: present
+  when: ansible_os_family == 'RedHat'

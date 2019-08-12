@@ -1,0 +1,32 @@
+---
+
+
+- name: TABLEAU USER | Create Tableau Server admin group
+  group:
+    name: "{{ tableau_user }}"
+    state: present
+
+- name: TABLEAU USER | Create Tableau Server admin group
+  group:
+    name: "tableau"
+    state: present
+
+- name: TABLEAU USER | Create Tableau Server admin group
+  group:
+    name: "tsmadmin"
+    state: present
+
+- name: TABLEAU USER | Create Tableau Server admin user
+  user:
+    name: "{{ tableau_user }}"
+    password: "{{ tableau_password_encrypted }}"
+    groups: "{{ tableau_user }},tableau,tsmadmin"
+    shell: /bin/bash
+    state: present
+
+- name: TABLEAU USER | Create Tableau Server admin home folder
+  file:
+    path: "/home/{{ tableau_user }}"
+    state: directory
+    owner: "{{ tableau_user }}"
+    group: "{{ tableau_user }}"

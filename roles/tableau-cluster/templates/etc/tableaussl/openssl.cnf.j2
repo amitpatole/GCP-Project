@@ -1,0 +1,29 @@
+[ req ]
+prompt = no
+distinguished_name = req_distinguished_name
+{% if letsencrypt_sans_domains[item] is defined and letsencrypt_sans_domains[item] | length > 0 %}
+req_extensions     = req_ext
+{% endif %}
+
+string_mask = utf8only
+default_md = sha256
+
+[ req_distinguished_name ]
+O=myowncloudcomputing.net
+L=Alpharetta
+ST=Georgia
+C=US
+CN={{ item }}
+
+{% if letsencrypt_sans_domains[item] is defined and letsencrypt_sans_domains[item] | length > 0 %}
+[ req_ext ]
+subjectAltName          = @alt_names
+
+[alt_names]
+DNS.1 = {{ item }}
+{% set i = 2 %}
+{% for domain in letsencrypt_sans_domains[item] %}
+DNS.{{ i }} = {{ domain }}
+{% set i = i + 1 %}
+{% endfor %}
+{% endif %}

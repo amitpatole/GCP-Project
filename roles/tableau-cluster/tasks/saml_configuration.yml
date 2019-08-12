@@ -1,0 +1,64 @@
+---
+- name:  TABLEAU SSL | Get Tableau Server Manager executable
+  shell: "ls {{ tsm_packages }} | grep customer"
+  register: tsm
+  changed_when: false
+
+- name:  TABLEAU SSL | Set facts for Tableau Server Manager executable
+  set_fact:
+    TSM_EXECUTABLE: "{{ tsm_packages }}/{{ item.stdout }}"
+  with_items:
+    - "{{ tsm }}"
+
+- name: TABLEAU SAML | Set facts for ssl cert and key file
+  set_fact:
+     tableau_cert_file: "{{ tableau_ssl_dir }}/{{ cert_file }}"
+     tableau_key_file: "{{ tableau_ssl_dir }}/{{ key_file }}"
+ 
+
+  
+- name: TABLEAU SAML | Create saml directory under Tableau Data directory
+  file:
+    state: directory
+    path: "{{ tableau_data_dir }}/saml"
+
+- name: TABLEAU SAML |  copy IdP metatata xml to saml data directory
+  copy:
+    src: "{{ playbook_dir }}/files/saml/{{ item }}"
+    dest: "{{ tableau_data_dir }}/saml/"
+  become: yes
+  become_user: "{{ tableau_user }}"
+  with_items:
+        - "{{ saml_IdP_metadata_file }}"
+
+
+- name: TABLEAU SAML | Configure return URL SAML entity ID and specify certificate and key files
+  command: "{{ TSM_EXECUTABLE }}/tsm authentication saml configure --idp-entity-id {{ tableau_saml_entity_id }} --idp-metadata {{ tableau_data_dir }}/saml/{{ saml_IdP_metadata_file }} --idp-return-url {{ tableau_saml_return_url }}  --cert-file {{ tableau_cert_file }} --key-file {{ tableau_key_file }}"
+  register: saml_config
+  become: yes
+  become_user: "{{ tableau_user }}"
+
+- name: TABLEAU SAML | Enable SAML authentication
+  command: "{{ TSM_EXECUTABLE }}/tsm authentication saml enable"
+  register: saml_auth
+  become: yes
+  become_user: "{{ tableau_user }}"
+
+- name: TABLEAU SAML | Apply pending changes
+  command: "{{ TSM_EXECUTABLE }}/tsm pending-changes apply --username {{ tableau_user }} --password {{ tableau_password }} --ignore-prompt"
+
+- name: TABLEAU SAML | Enable site specific saml support
+  command: "{{ TSM_EXECUTABLE }}/tsm authentication sitesaml enable"
+
+- name: TABLEAU SAML | Apply pending changes
+  command: "{{ TSM_EXECUTABLE }}/tsm pending-changes apply --username {{ tableau_user }} --password {{ tableau_password }} --ignore-prompt"
+
+- name: TABLEAU SAML | Generate saml metatata file for IdP
+  command: "{{ TSM_EXECUTABLE }}/tsm authentication saml export-metadata -f /tmp/{{ inventory_hostname }}-{{ saml_metadata_file }}"
+  become: yes
+  become_user: "{{ tableau_user }}"
+
+- name: TABLEAU SAML |  Get generated metatata xml
+  copy:
+    src: "/tmp/{{ inventory_hostname }}-{{ saml_IdP_metadata_file_ext }}"
+    dest: "{{ playbook_dir }}/files/IdP/"

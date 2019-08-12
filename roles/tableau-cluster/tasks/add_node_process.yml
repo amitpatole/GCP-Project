@@ -1,0 +1,37 @@
+- name: Find customer directory
+  shell: "ls {{ tsm_packages }}/ | grep customer"
+  register: tsm
+  tags: ["install-additional", "find-customer-dir"]
+
+
+  
+#Add this ----------
+- name: TABLEAU STOP|Stop TSM Service
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm  stop"
+  async: 1800
+  poll: 10
+  become: yes
+  become_user: "{{ tableau_user }}"
+  register: tsm_stop
+  
+#----------
+- name: TABLEAU CLEANUP COORDINATION|Cleanup old coordination-service
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm topology cleanup-coordination-service"
+  become: yes
+  become_user: "{{ tableau_user }}"
+
+
+- name: TABLEAU START| Start TSM Service (This will take time )
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm  start"
+  async: 3600
+  poll: 10
+  become: yes
+  become_user: "{{ tableau_user }}"
+  register: tsm_start
+  tags: [ "add_cluster_process", "tsm-start" ]
+
+
+- name: Apply pending changes
+  command: "{{ tsm_packages }}/{{ tsm.stdout }}/tsm  pending-changes apply --username {{ tableau_user }} --password {{ tableau_password }} --ignore-prompt --ignore-warnings"
+  tags: [ "add_cluster_process", "apply-changes" ]
+
