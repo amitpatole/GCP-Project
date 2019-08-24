@@ -26,7 +26,7 @@
   become_user: "{{ tableau_user }}"
   with_items:
         - "{{ key_file }}"
-		- "{{ cert_file }}"
+        - "{{ cert_file }}"
 
 - name:  TABLEAU SSL | Configure SSL on Tableau Server
   command: "{{ TSM_EXECUTABLE }}/tsm security external-ssl enable --cert-file {{ tableau_ssl_dir }}/{{ cert_file }} --key-file {{ tableau_ssl_dir }}/{{ key_file }}"
