@@ -27,7 +27,6 @@
 - name: TABLEAU | Create ssl reload helper
   import_tasks: ssl.yml
   tags: tableau-ssl
-  when: tableau_setup_ssl_helper
 
   #- name: TABLEAU | Generate bootstrap file on Master Server
   #import_tasks: generate_bootstrap.yml
